@@ -21,6 +21,8 @@ STATUS_WEIGHTS = [0.05, 0.88, 0.04, 0.02, 0.01]
 CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD"]
 CURRENCY_WEIGHTS = [0.60, 0.15, 0.10, 0.05, 0.05, 0.05]
 
+EXCHANGE_RATES = {"USD": 1.0, "EUR": 1.08, "GBP": 1.27, "JPY": 0.0067, "CAD": 0.74, "AUD": 0.65}
+
 CATEGORIES = [
     "Groceries",
     "Restaurants",
@@ -110,12 +112,16 @@ def generate_transaction(
         tzinfo=timezone.utc,
     )
 
+    amount_usd = round(amount * EXCHANGE_RATES.get(currency, 1.0), 2)
+
     return {
         "transaction_id": str(uuid.uuid4()),
         "account_id": hash_id(account_id),
         "transaction_date": txn_date.isoformat(),
         "transaction_time": f"{txn_hour:02d}:{txn_minute:02d}:{txn_second:02d}",
+        "transaction_hour": txn_hour,
         "amount": amount,
+        "amount_usd": amount_usd,
         "currency": currency,
         "transaction_type": txn_type,
         "merchant_id": random.choice(MERCHANTS) if txn_type != "TRANSFER" else None,
