@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any
 
 import boto3
-import pandas as pd
 import great_expectations as ge
+import pandas as pd
 from great_expectations.core.batch import RuntimeBatchRequest
 from great_expectations.data_context import BaseDataContext
 from great_expectations.data_context.types.base import DataContextConfig
@@ -43,7 +43,11 @@ class DataQualityValidator:
 
     def validate(self, df: pd.DataFrame, dataset_name: str, run_date: str | None = None) -> dict[str, Any]:
         gdf = ge.from_pandas(df)
-        results = {"dataset": dataset_name, "run_date": run_date or datetime.now(timezone.utc).date().isoformat(), "checks": []}
+        results = {
+            "dataset": dataset_name,
+            "run_date": run_date or datetime.now(timezone.utc).date().isoformat(),
+            "checks": [],
+        }
         passed = 0
         failed = 0
 
@@ -65,7 +69,12 @@ class DataQualityValidator:
                     passed += 1
                 else:
                     failed += 1
-                    logger.warning("FAIL %s on column=%s kwargs=%s", exp_type, kwargs.get("column"), kwargs)
+                    logger.warning(
+                        "FAIL %s on column=%s kwargs=%s",
+                        exp_type,
+                        kwargs.get("column"),
+                        kwargs,
+                    )
             except Exception as e:
                 logger.error("Error running %s: %s", exp_type, e)
                 results["checks"].append({"expectation": exp_type, "success": False, "error": str(e)})
@@ -81,7 +90,10 @@ class DataQualityValidator:
 
         logger.info(
             "Validation complete: dataset=%s passed=%d failed=%d pass_rate=%.1f%%",
-            dataset_name, passed, failed, results["summary"]["pass_rate"]
+            dataset_name,
+            passed,
+            failed,
+            results["summary"]["pass_rate"],
         )
 
         if self._emit_metrics:
@@ -91,15 +103,16 @@ class DataQualityValidator:
 
     def _publish_metrics(self, dataset_name: str, summary: dict) -> None:
         metrics = [
-            {"MetricName": "PassedChecks",  "Value": summary["passed"], "Unit": "Count"},
-            {"MetricName": "FailedChecks",  "Value": summary["failed"], "Unit": "Count"},
-            {"MetricName": "PassRatePct",   "Value": summary["pass_rate"], "Unit": "Percent"},
+            {"MetricName": "PassedChecks", "Value": summary["passed"], "Unit": "Count"},
+            {"MetricName": "FailedChecks", "Value": summary["failed"], "Unit": "Count"},
+            {
+                "MetricName": "PassRatePct",
+                "Value": summary["pass_rate"],
+                "Unit": "Percent",
+            },
         ]
         dimensions = [{"Name": "Dataset", "Value": dataset_name}]
-        metric_data = [
-            {**m, "Dimensions": dimensions, "Timestamp": datetime.now(timezone.utc)}
-            for m in metrics
-        ]
+        metric_data = [{**m, "Dimensions": dimensions, "Timestamp": datetime.now(timezone.utc)} for m in metrics]
         try:
             self._cloudwatch.put_metric_data(
                 Namespace=CLOUDWATCH_NAMESPACE,
@@ -116,8 +129,9 @@ def run_validation_from_s3(
     output_bucket: str,
 ) -> dict:
     """Load a Parquet file from S3, validate it, and write the results JSON back to S3."""
-    import boto3
     import io
+
+    import boto3
 
     s3 = boto3.client("s3")
     bucket, key = s3_path.replace("s3://", "").split("/", 1)
@@ -149,7 +163,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.input.startswith("s3://"):
-        import io, boto3 as b3
+        import io
+
+        import boto3 as b3
+
         s3c = b3.client("s3")
         bucket, key = args.input.replace("s3://", "").split("/", 1)
         df = pd.read_parquet(io.BytesIO(s3c.get_object(Bucket=bucket, Key=key)["Body"].read()))

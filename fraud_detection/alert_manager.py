@@ -31,17 +31,18 @@ class AlertManager:
             "amount_usd": str(transaction.get("amount_usd", 0)),
             "action": evaluation.action,
             "risk_score": str(round(evaluation.total_score, 4)),
-            "signals": json.dumps([
-                {"rule": s.rule_name, "reason": s.reason}
-                for s in evaluation.signals if s.triggered
-            ]),
+            "signals": json.dumps(
+                [{"rule": s.rule_name, "reason": s.reason} for s in evaluation.signals if s.triggered]
+            ),
             "ttl": int(datetime.now(timezone.utc).timestamp()) + (90 * 86400),  # 90-day TTL
         }
         try:
             self._table.put_item(Item=item)
             logger.info(
                 "Saved fraud alert: transaction_id=%s action=%s score=%.2f",
-                evaluation.transaction_id, evaluation.action, evaluation.total_score
+                evaluation.transaction_id,
+                evaluation.action,
+                evaluation.total_score,
             )
         except ClientError as e:
             logger.error("DynamoDB put_item failed: %s", e.response["Error"]["Message"])
@@ -70,7 +71,10 @@ class AlertManager:
                 Message=json.dumps(message, indent=2),
                 MessageAttributes={
                     "action": {"DataType": "String", "StringValue": evaluation.action},
-                    "risk_score": {"DataType": "Number", "StringValue": str(evaluation.total_score)},
+                    "risk_score": {
+                        "DataType": "Number",
+                        "StringValue": str(evaluation.total_score),
+                    },
                 },
             )
             logger.info("SNS notification sent for %s", evaluation.transaction_id)

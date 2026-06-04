@@ -1,21 +1,30 @@
 """Unit tests for ETL transform functions (no Spark/Glue required)."""
 
-import pytest
-import pandas as pd
-import sys
 import os
+import sys
+
+import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Pure-Python equivalents of Glue transforms for unit testing
 
 EXCHANGE_RATES = {
-    "USD": 1.0, "EUR": 1.08, "GBP": 1.27, "JPY": 0.0067,
-    "CAD": 0.74, "AUD": 0.65, "CHF": 1.12, "CNY": 0.14,
+    "USD": 1.0,
+    "EUR": 1.08,
+    "GBP": 1.27,
+    "JPY": 0.0067,
+    "CAD": 0.74,
+    "AUD": 0.65,
+    "CHF": 1.12,
+    "CNY": 0.14,
 }
 
 MCC_CATEGORY_MAP = {
-    "5411": "Groceries", "5812": "Restaurants", "5541": "Gas Stations",
+    "5411": "Groceries",
+    "5812": "Restaurants",
+    "5541": "Gas Stations",
 }
 
 VALID_TYPES = {"DEBIT", "CREDIT", "TRANSFER", "REFUND"}
@@ -24,20 +33,18 @@ VALID_STATUSES = {"PENDING", "SETTLED", "FLAGGED", "REVERSED", "FAILED"}
 
 def normalize_currency_pd(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["amount_usd"] = df.apply(
-        lambda r: round(r["amount"] * EXCHANGE_RATES.get(r["currency"], 1.0), 2), axis=1
-    )
+    df["amount_usd"] = df.apply(lambda r: round(r["amount"] * EXCHANGE_RATES.get(r["currency"], 1.0), 2), axis=1)
     df["exchange_rate"] = df["currency"].map(EXCHANGE_RATES)
     return df
 
 
 def validate_rows(df: pd.DataFrame):
     valid = df[
-        df["transaction_id"].notna() &
-        df["account_id"].notna() &
-        df["amount"].notna() &
-        df["transaction_type"].isin(VALID_TYPES) &
-        df["status"].isin(VALID_STATUSES)
+        df["transaction_id"].notna()
+        & df["account_id"].notna()
+        & df["amount"].notna()
+        & df["transaction_type"].isin(VALID_TYPES)
+        & df["status"].isin(VALID_STATUSES)
     ]
     quarantine = df[~df.index.isin(valid.index)]
     return valid, quarantine
@@ -70,11 +77,13 @@ class TestNormalizeCurrency:
         assert result.iloc[0]["amount_usd"] == 100.0
 
     def test_multiple_currencies(self):
-        df = pd.DataFrame([
-            {"amount": 200.0, "currency": "USD"},
-            {"amount": 100.0, "currency": "EUR"},
-            {"amount": 80.0,  "currency": "GBP"},
-        ])
+        df = pd.DataFrame(
+            [
+                {"amount": 200.0, "currency": "USD"},
+                {"amount": 100.0, "currency": "EUR"},
+                {"amount": 80.0, "currency": "GBP"},
+            ]
+        )
         result = normalize_currency_pd(df)
         assert len(result) == 3
         assert result.iloc[1]["amount_usd"] == pytest.approx(108.0, rel=1e-4)
@@ -131,18 +140,30 @@ class TestValidateRows:
 
 class TestDeduplicate:
     def test_keeps_latest_updated_at(self):
-        df = pd.DataFrame([
-            {"transaction_id": "t1", "updated_at": "2026-01-01T10:00:00", "amount": 100},
-            {"transaction_id": "t1", "updated_at": "2026-01-01T12:00:00", "amount": 200},
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "transaction_id": "t1",
+                    "updated_at": "2026-01-01T10:00:00",
+                    "amount": 100,
+                },
+                {
+                    "transaction_id": "t1",
+                    "updated_at": "2026-01-01T12:00:00",
+                    "amount": 200,
+                },
+            ]
+        )
         result = deduplicate_pd(df)
         assert len(result) == 1
         assert result.iloc[0]["amount"] == 200
 
     def test_no_duplicates_unchanged(self):
-        df = pd.DataFrame([
-            {"transaction_id": "t1", "updated_at": "2026-01-01", "amount": 100},
-            {"transaction_id": "t2", "updated_at": "2026-01-01", "amount": 200},
-        ])
+        df = pd.DataFrame(
+            [
+                {"transaction_id": "t1", "updated_at": "2026-01-01", "amount": 100},
+                {"transaction_id": "t2", "updated_at": "2026-01-01", "amount": 200},
+            ]
+        )
         result = deduplicate_pd(df)
         assert len(result) == 2

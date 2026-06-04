@@ -1,12 +1,13 @@
 """Unit tests for the fraud rule engine."""
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "fraud_detection"))
 
-from fraud_rules import FraudRuleEngine, FraudEvaluation
+from fraud_rules import FraudEvaluation, FraudRuleEngine
 
 DEFAULT_THRESHOLDS = {
     "high_amount_usd": 10_000,
@@ -21,7 +22,7 @@ BASE_TXN = {
     "account_id": "a" * 64,
     "amount_usd": 50.0,
     "transaction_type": "DEBIT",
-    "transaction_hour": 14,      # 2pm — normal
+    "transaction_hour": 14,  # 2pm — normal
     "is_international": False,
     "country_code": "US",
     "merchant_id": "MERCHANT_0001",
@@ -117,7 +118,12 @@ class TestOverallEvaluation:
 
     def test_high_risk_transaction_flagged(self):
         engine = make_engine()
-        txn = {**BASE_TXN, "amount_usd": 15_000, "is_international": True, "country_code": "NG"}
+        txn = {
+            **BASE_TXN,
+            "amount_usd": 15_000,
+            "is_international": True,
+            "country_code": "NG",
+        }
         result = engine.evaluate(txn)
         assert result.action in ("FLAG", "BLOCK")
         assert result.is_fraud
@@ -127,10 +133,10 @@ class TestOverallEvaluation:
         engine = make_engine()
         txn = {
             **BASE_TXN,
-            "amount_usd": 15_000,           # +0.4
-            "transaction_hour": 2,           # +0.2
+            "amount_usd": 15_000,  # +0.4
+            "transaction_hour": 2,  # +0.2
             "is_international": True,
-            "country_code": "NG",            # +0.5
+            "country_code": "NG",  # +0.5
         }
         result = engine.evaluate(txn, recent_count=15)  # +0.6
         # Score is capped at 1.0

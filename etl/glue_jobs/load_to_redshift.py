@@ -5,13 +5,14 @@ Uses COPY command via S3 staging for high-throughput bulk loads.
 Performs upsert (merge) on transaction_id to handle late-arriving updates.
 """
 
-import sys
 import logging
-from awsglue.utils import getResolvedOptions
+import sys
+
+import boto3
 from awsglue.context import GlueContext
 from awsglue.job import Job
+from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
-import boto3
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ def get_secret(secret_name: str, region: str = "us-east-1") -> dict:
     client = boto3.client("secretsmanager", region_name=region)
     response = client.get_secret_value(SecretId=secret_name)
     import json
+
     return json.loads(response["SecretString"])
 
 
@@ -63,7 +65,7 @@ def copy_to_staging(glue_ctx, silver_path: str, redshift_conn: str, iam_role: st
     dynamic_frame = glue_ctx.create_dynamic_frame.from_options(
         connection_type="s3",
         connection_options={"paths": [silver_path], "recurse": True},
-        format="parquet"
+        format="parquet",
     )
 
     glue_ctx.write_dynamic_frame.from_jdbc_conf(
@@ -82,6 +84,7 @@ def copy_to_staging(glue_ctx, silver_path: str, redshift_conn: str, iam_role: st
 def run_merge(secret_name: str):
     """Execute the upsert SQL against Redshift via psycopg2."""
     import psycopg2
+
     creds = get_secret(secret_name)
     conn = psycopg2.connect(
         host=creds["host"],
@@ -101,10 +104,16 @@ def run_merge(secret_name: str):
 
 
 def main():
-    args = getResolvedOptions(sys.argv, [
-        "JOB_NAME", "silver_bucket", "redshift_connection",
-        "redshift_secret", "iam_role"
-    ])
+    args = getResolvedOptions(
+        sys.argv,
+        [
+            "JOB_NAME",
+            "silver_bucket",
+            "redshift_connection",
+            "redshift_secret",
+            "iam_role",
+        ],
+    )
 
     sc = SparkContext()
     glue_ctx = GlueContext(sc)

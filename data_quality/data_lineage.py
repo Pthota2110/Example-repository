@@ -97,6 +97,7 @@ class LineageTracker:
 
 # Pre-built lineage helpers for each pipeline stage
 
+
 def record_ingest_lineage(tracker: LineageTracker, run_id: str, source_path: str, bronze_path: str) -> str:
     return tracker.record_run(
         job_name="financial-ingest-job",
@@ -115,7 +116,10 @@ def record_transform_lineage(tracker: LineageTracker, run_id: str, bronze_path: 
         inputs=[{"type": AssetType.S3_PATH.value, "uri": bronze_path}],
         outputs=[{"type": AssetType.S3_PATH.value, "uri": silver_path}],
         run_id=run_id,
-        metadata={"layer": "bronze→silver", "transformations": ["currency_normalize", "dedup", "enrich_category"]},
+        metadata={
+            "layer": "bronze→silver",
+            "transformations": ["currency_normalize", "dedup", "enrich_category"],
+        },
     )
 
 
@@ -124,7 +128,12 @@ def record_load_lineage(tracker: LineageTracker, run_id: str, silver_path: str, 
         job_name="financial-load-job",
         job_type=AssetType.GLUE_JOB,
         inputs=[{"type": AssetType.S3_PATH.value, "uri": silver_path}],
-        outputs=[{"type": AssetType.REDSHIFT_TABLE.value, "uri": f"redshift://{redshift_table}"}],
+        outputs=[
+            {
+                "type": AssetType.REDSHIFT_TABLE.value,
+                "uri": f"redshift://{redshift_table}",
+            }
+        ],
         run_id=run_id,
         metadata={"layer": "silver→gold", "load_strategy": "upsert"},
     )
@@ -134,7 +143,12 @@ def record_fraud_lineage(tracker: LineageTracker, run_id: str, kinesis_stream: s
     return tracker.record_run(
         job_name="fraud-detection-lambda",
         job_type=AssetType.LAMBDA,
-        inputs=[{"type": AssetType.KINESIS_STREAM.value, "uri": f"kinesis://{kinesis_stream}"}],
+        inputs=[
+            {
+                "type": AssetType.KINESIS_STREAM.value,
+                "uri": f"kinesis://{kinesis_stream}",
+            }
+        ],
         outputs=[{"type": AssetType.REDSHIFT_TABLE.value, "uri": f"dynamodb://{alert_table}"}],
         run_id=run_id,
         metadata={"processing_model": "real-time", "engine": "rule-based"},

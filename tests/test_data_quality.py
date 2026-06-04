@@ -17,21 +17,24 @@ MINIMAL_EXPECTATIONS = {
     "expectations": [
         {
             "expectation_type": "expect_column_values_to_not_be_null",
-            "kwargs": {"column": "transaction_id"}
+            "kwargs": {"column": "transaction_id"},
         },
         {
             "expectation_type": "expect_column_values_to_be_in_set",
-            "kwargs": {"column": "status", "value_set": ["PENDING", "SETTLED", "FLAGGED"]}
+            "kwargs": {
+                "column": "status",
+                "value_set": ["PENDING", "SETTLED", "FLAGGED"],
+            },
         },
         {
             "expectation_type": "expect_column_values_to_be_between",
-            "kwargs": {"column": "amount", "min_value": 0.01, "max_value": 1_000_000}
+            "kwargs": {"column": "amount", "min_value": 0.01, "max_value": 1_000_000},
         },
         {
             "expectation_type": "expect_column_values_to_be_unique",
-            "kwargs": {"column": "transaction_id"}
+            "kwargs": {"column": "transaction_id"},
         },
-    ]
+    ],
 }
 
 
@@ -44,30 +47,40 @@ def expectations_file(tmp_path):
 
 @pytest.fixture
 def valid_df():
-    return pd.DataFrame([
-        {"transaction_id": "t1", "status": "SETTLED", "amount": 100.0},
-        {"transaction_id": "t2", "status": "PENDING", "amount": 50.0},
-        {"transaction_id": "t3", "status": "FLAGGED", "amount": 9999.0},
-    ])
+    return pd.DataFrame(
+        [
+            {"transaction_id": "t1", "status": "SETTLED", "amount": 100.0},
+            {"transaction_id": "t2", "status": "PENDING", "amount": 50.0},
+            {"transaction_id": "t3", "status": "FLAGGED", "amount": 9999.0},
+        ]
+    )
 
 
 @pytest.fixture
 def invalid_df():
-    return pd.DataFrame([
-        {"transaction_id": None,  "status": "SETTLED", "amount": 100.0},
-        {"transaction_id": "t2",  "status": "UNKNOWN", "amount": 50.0},
-        {"transaction_id": "t2",  "status": "SETTLED", "amount": -5.0},  # duplicate + negative
-    ])
+    return pd.DataFrame(
+        [
+            {"transaction_id": None, "status": "SETTLED", "amount": 100.0},
+            {"transaction_id": "t2", "status": "UNKNOWN", "amount": 50.0},
+            {
+                "transaction_id": "t2",
+                "status": "SETTLED",
+                "amount": -5.0,
+            },  # duplicate + negative
+        ]
+    )
 
 
 class TestDataQualityValidator:
     def _make_validator(self, expectations_file):
         from data_quality.validators import DataQualityValidator
+
         with patch("boto3.client"):
             return DataQualityValidator(expectations_file, emit_metrics=False)
 
     def test_valid_data_all_pass(self, expectations_file, valid_df):
         from data_quality.validators import DataQualityValidator
+
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(valid_df, "test_dataset")
         assert result["overall_success"] is True
@@ -75,6 +88,7 @@ class TestDataQualityValidator:
 
     def test_invalid_data_some_fail(self, expectations_file, invalid_df):
         from data_quality.validators import DataQualityValidator
+
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(invalid_df, "test_dataset")
         assert result["overall_success"] is False
@@ -82,6 +96,7 @@ class TestDataQualityValidator:
 
     def test_result_structure(self, expectations_file, valid_df):
         from data_quality.validators import DataQualityValidator
+
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(valid_df, "test_dataset")
         assert "dataset" in result
@@ -91,6 +106,7 @@ class TestDataQualityValidator:
 
     def test_pass_rate_calculation(self, expectations_file, valid_df):
         from data_quality.validators import DataQualityValidator
+
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(valid_df, "test_dataset")
         total = result["summary"]["total"]
@@ -99,6 +115,7 @@ class TestDataQualityValidator:
 
     def test_missing_column_counted_as_failure(self, expectations_file):
         from data_quality.validators import DataQualityValidator
+
         df = pd.DataFrame([{"transaction_id": "t1"}])  # missing 'status' and 'amount'
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(df, "test_dataset")

@@ -11,10 +11,9 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import boto3
-from botocore.exceptions import ClientError
-
-from fraud_rules import FraudRuleEngine
 from alert_manager import AlertManager
+from botocore.exceptions import ClientError
+from fraud_rules import FraudRuleEngine
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -68,9 +67,7 @@ def check_new_merchant(account_id: str, merchant_id: str) -> bool:
     """Return True if this account has never transacted at this merchant."""
     table = _dynamodb.Table(VELOCITY_TABLE)
     try:
-        response = table.get_item(
-            Key={"account_id": account_id, "merchant_id": merchant_id}
-        )
+        response = table.get_item(Key={"account_id": account_id, "merchant_id": merchant_id})
         return "Item" not in response
     except ClientError:
         return False
@@ -106,7 +103,9 @@ def process_transaction(txn: dict, engine: FraudRuleEngine, alert_mgr: AlertMana
 
     logger.info(
         "transaction_id=%s action=%s score=%.2f",
-        txn["transaction_id"], evaluation.action, evaluation.total_score
+        txn["transaction_id"],
+        evaluation.action,
+        evaluation.total_score,
     )
     return evaluation.to_dict()
 

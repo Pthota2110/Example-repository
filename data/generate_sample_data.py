@@ -22,9 +22,19 @@ CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD"]
 CURRENCY_WEIGHTS = [0.60, 0.15, 0.10, 0.05, 0.05, 0.05]
 
 CATEGORIES = [
-    "Groceries", "Restaurants", "Gas Stations", "Transit",
-    "Hotels", "Airlines", "Retail", "ATM", "Pharmacy",
-    "Software", "Electronics", "Healthcare", "Uncategorized"
+    "Groceries",
+    "Restaurants",
+    "Gas Stations",
+    "Transit",
+    "Hotels",
+    "Airlines",
+    "Retail",
+    "ATM",
+    "Pharmacy",
+    "Software",
+    "Electronics",
+    "Healthcare",
+    "Uncategorized",
 ]
 
 COUNTRY_CODES = ["US", "GB", "DE", "FR", "CA", "AU", "JP", "NG", "RO"]
@@ -53,10 +63,35 @@ def generate_transaction(
     end_date: date,
 ) -> dict:
     txn_date = start_date + timedelta(days=random.randint(0, (end_date - start_date).days))
-    txn_hour = random.choices(range(24), weights=[
-        1, 2, 3, 2, 1, 1, 2, 5, 8, 10, 12, 14,
-        15, 14, 13, 12, 11, 10, 9, 8, 7, 5, 3, 2
-    ])[0]
+    txn_hour = random.choices(
+        range(24),
+        weights=[
+            1,
+            2,
+            3,
+            2,
+            1,
+            1,
+            2,
+            5,
+            8,
+            10,
+            12,
+            14,
+            15,
+            14,
+            13,
+            12,
+            11,
+            10,
+            9,
+            8,
+            7,
+            5,
+            3,
+            2,
+        ],
+    )[0]
     txn_minute = random.randint(0, 59)
     txn_second = random.randint(0, 59)
 
@@ -66,8 +101,13 @@ def generate_transaction(
     country = random.choices(COUNTRY_CODES, weights=COUNTRY_WEIGHTS)[0]
     amount = random_amount(txn_type)
     created_ts = datetime(
-        txn_date.year, txn_date.month, txn_date.day,
-        txn_hour, txn_minute, txn_second, tzinfo=timezone.utc
+        txn_date.year,
+        txn_date.month,
+        txn_date.day,
+        txn_hour,
+        txn_minute,
+        txn_second,
+        tzinfo=timezone.utc,
     )
 
     return {
@@ -83,8 +123,10 @@ def generate_transaction(
         "category": random.choice(CATEGORIES),
         "status": random.choices(STATUSES, weights=STATUS_WEIGHTS)[0],
         "country_code": country,
-        "device_id": hash_id(f"device-{random.randint(1, 10000)}")[:16] if random.random() > 0.05 else None,
-        "ip_address": hash_id(f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(0,255)}"),
+        "device_id": (hash_id(f"device-{random.randint(1, 10000)}")[:16] if random.random() > 0.05 else None),
+        "ip_address": hash_id(
+            f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(0,255)}"
+        ),
         "created_at": created_ts.isoformat(),
         "updated_at": created_ts.isoformat(),
     }
@@ -115,7 +157,10 @@ def main():
     df = generate_dataset(args.records, args.accounts, args.days)
 
     if args.output.startswith("s3://"):
-        import boto3, io
+        import io
+
+        import boto3
+
         buf = io.BytesIO()
         df.to_parquet(buf, index=False)
         buf.seek(0)

@@ -45,7 +45,9 @@ def handler(event: dict, context) -> dict:
         flagged = sum(1 for r in results if r.get("action") == "FLAG")
         logger.info(
             "Batch complete: processed=%d blocked=%d flagged=%d",
-            len(results), blocked, flagged
+            len(results),
+            blocked,
+            flagged,
         )
     except Exception as e:
         logger.error("Batch processing error: %s", e)

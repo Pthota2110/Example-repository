@@ -5,9 +5,9 @@ Rules are data-driven — thresholds live in DynamoDB so they can be updated
 without a Lambda redeployment. Each rule returns a (triggered: bool, reason: str) tuple.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class FraudSignal:
     rule_name: str
     triggered: bool
-    score: float        # 0.0–1.0 contribution to total risk score
+    score: float  # 0.0–1.0 contribution to total risk score
     reason: str
 
 
@@ -26,7 +26,7 @@ class FraudEvaluation:
     total_score: float
     signals: list[FraudSignal] = field(default_factory=list)
     is_fraud: bool = False
-    action: str = "ALLOW"   # ALLOW | FLAG | BLOCK
+    action: str = "ALLOW"  # ALLOW | FLAG | BLOCK
 
     def to_dict(self) -> dict:
         return {
@@ -35,7 +35,12 @@ class FraudEvaluation:
             "is_fraud": self.is_fraud,
             "action": self.action,
             "signals": [
-                {"rule": s.rule_name, "triggered": s.triggered, "score": s.score, "reason": s.reason}
+                {
+                    "rule": s.rule_name,
+                    "triggered": s.triggered,
+                    "score": s.score,
+                    "reason": s.reason,
+                }
                 for s in self.signals
             ],
         }
@@ -52,7 +57,7 @@ class FraudRuleEngine:
             rule_name="HIGH_AMOUNT",
             triggered=triggered,
             score=0.4 if triggered else 0.0,
-            reason=f"Amount ${txn.get('amount_usd')} exceeds ${limit}" if triggered else "",
+            reason=(f"Amount ${txn.get('amount_usd')} exceeds ${limit}" if triggered else ""),
         )
 
     def _rule_unusual_hour(self, txn: dict) -> FraudSignal:
@@ -63,7 +68,7 @@ class FraudRuleEngine:
             rule_name="UNUSUAL_HOUR",
             triggered=triggered,
             score=0.2 if triggered else 0.0,
-            reason=f"Transaction at {hour:02d}:00 UTC (high-risk window)" if triggered else "",
+            reason=(f"Transaction at {hour:02d}:00 UTC (high-risk window)" if triggered else ""),
         )
 
     def _rule_international(self, txn: dict) -> FraudSignal:
@@ -72,7 +77,8 @@ class FraudRuleEngine:
         is_high_risk = txn.get("country_code") in high_risk_countries
         score = 0.5 if is_high_risk else (0.15 if triggered else 0.0)
         reason = (
-            f"Transaction from high-risk country {txn.get('country_code')}" if is_high_risk
+            f"Transaction from high-risk country {txn.get('country_code')}"
+            if is_high_risk
             else ("International transaction" if triggered else "")
         )
         return FraudSignal(
@@ -89,7 +95,7 @@ class FraudRuleEngine:
             rule_name="VELOCITY",
             triggered=triggered,
             score=0.6 if triggered else 0.0,
-            reason=f"{recent_count} transactions in 1 hour (limit: {limit})" if triggered else "",
+            reason=(f"{recent_count} transactions in 1 hour (limit: {limit})" if triggered else ""),
         )
 
     def _rule_new_merchant(self, txn: dict, is_new_merchant: bool) -> FraudSignal:
@@ -98,7 +104,7 @@ class FraudRuleEngine:
             rule_name="NEW_MERCHANT_HIGH_VALUE",
             triggered=triggered,
             score=0.35 if triggered else 0.0,
-            reason="Large transaction at previously unseen merchant" if triggered else "",
+            reason=("Large transaction at previously unseen merchant" if triggered else ""),
         )
 
     def _rule_card_not_present(self, txn: dict) -> FraudSignal:
