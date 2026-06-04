@@ -73,7 +73,9 @@ def invalid_df():
 class TestDataQualityValidator:
     @patch("boto3.client")
     @patch("great_expectations.get_context")
-    def test_valid_data_all_pass(self, mock_context, mock_boto, expectations_file, valid_df):
+    def test_valid_data_all_pass(
+        self, mock_context, mock_boto, expectations_file, valid_df
+    ):
         from data_quality.validators import DataQualityValidator
 
         # Mock the Great Expectations context and validator
@@ -131,7 +133,9 @@ class TestDataQualityValidator:
 
     @patch("boto3.client")
     @patch("great_expectations.get_context")
-    def test_result_structure(self, mock_context, mock_boto, expectations_file, valid_df):
+    def test_result_structure(
+        self, mock_context, mock_boto, expectations_file, valid_df
+    ):
         from data_quality.validators import DataQualityValidator
 
         # Mock the Great Expectations context and validator
