@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "fraud_detection"))
 
-from fraud_rules import FraudEvaluation, FraudRuleEngine
+from fraud_rules import FraudRuleEngine  # noqa: E402
 
 DEFAULT_THRESHOLDS = {
     "high_amount_usd": 10_000,

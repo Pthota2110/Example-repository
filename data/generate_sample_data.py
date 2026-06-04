@@ -125,7 +125,7 @@ def generate_transaction(
         "country_code": country,
         "device_id": (hash_id(f"device-{random.randint(1, 10000)}")[:16] if random.random() > 0.05 else None),
         "ip_address": hash_id(
-            f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(0,255)}"
+            f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
         ),
         "created_at": created_ts.isoformat(),
         "updated_at": created_ts.isoformat(),

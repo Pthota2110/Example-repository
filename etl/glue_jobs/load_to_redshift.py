@@ -76,7 +76,7 @@ def copy_to_staging(glue_ctx, silver_path: str, redshift_conn: str, iam_role: st
             "database": "financial_dw",
             "preactions": CREATE_STAGING_SQL,
         },
-        redshift_tmp_dir=f"s3://tmp-bucket/redshift-tmp/",
+        redshift_tmp_dir="s3://tmp-bucket/redshift-tmp/",
     )
     logger.info("Copied %d records to staging table", dynamic_frame.count())
 

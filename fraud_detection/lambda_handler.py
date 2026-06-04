@@ -7,7 +7,6 @@ list so Lambda retries only failed records (not the full shard).
 """
 
 import base64
-import json
 import logging
 import os
 

@@ -10,7 +10,7 @@ import sys
 
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from awsglue.transforms import *
+from awsglue.transforms import ApplyMapping  # noqa: F401
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from pyspark.sql import functions as F

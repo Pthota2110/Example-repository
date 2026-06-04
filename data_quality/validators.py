@@ -7,17 +7,12 @@ and emits pass/fail results to CloudWatch as custom metrics.
 
 import json
 import logging
-import os
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import boto3
 import great_expectations as ge
 import pandas as pd
-from great_expectations.core.batch import RuntimeBatchRequest
-from great_expectations.data_context import BaseDataContext
-from great_expectations.data_context.types.base import DataContextConfig
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
