@@ -99,7 +99,7 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.AWS_DEPLOY_ENABLED == 'true'
     permissions:
       id-token: write
       contents: read
@@ -154,7 +154,12 @@ jobs:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     needs: [test, data-quality-check]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Only runs on main push AND when AWS credentials are configured as repo secrets.
+    # Skip gracefully in portfolio/demo environments where AWS is not wired up.
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      vars.AWS_DEPLOY_ENABLED == 'true'
     environment: dev
     permissions:
       id-token: write
@@ -192,7 +197,6 @@ jobs:
           cd fraud_detection
           zip -r ../fraud_detection.zip .
           cd ..
-          LAMBDA_NAME=$(cd terraform && terraform output -raw glue_ingest_job | sed 's/ingest/fraud-detection/')
           aws lambda update-function-code \
             --function-name financial-platform-dev-fraud-detection \
             --zip-file fileb://fraud_detection.zip
