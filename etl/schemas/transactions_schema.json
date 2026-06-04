@@ -1,0 +1,24 @@
+{
+  "name": "financial_transactions",
+  "version": "1.0.0",
+  "fields": [
+    {"name": "transaction_id",   "type": "string",  "nullable": false, "description": "UUID v4"},
+    {"name": "account_id",       "type": "string",  "nullable": false, "description": "Masked account identifier"},
+    {"name": "transaction_date", "type": "date",    "nullable": false, "description": "Date of transaction (YYYY-MM-DD)"},
+    {"name": "transaction_time", "type": "string",  "nullable": false, "description": "Time of transaction (HH:MM:SS UTC)"},
+    {"name": "amount",           "type": "decimal", "nullable": false, "precision": 18, "scale": 2},
+    {"name": "currency",         "type": "string",  "nullable": false, "length": 3, "description": "ISO 4217 currency code"},
+    {"name": "transaction_type", "type": "string",  "nullable": false, "enum": ["DEBIT", "CREDIT", "TRANSFER", "REFUND"]},
+    {"name": "merchant_id",      "type": "string",  "nullable": true},
+    {"name": "merchant_name",    "type": "string",  "nullable": true},
+    {"name": "category",         "type": "string",  "nullable": true, "description": "MCC-based spending category"},
+    {"name": "status",           "type": "string",  "nullable": false, "enum": ["PENDING", "SETTLED", "FLAGGED", "REVERSED", "FAILED"]},
+    {"name": "country_code",     "type": "string",  "nullable": true, "length": 2, "description": "ISO 3166-1 alpha-2"},
+    {"name": "device_id",        "type": "string",  "nullable": true},
+    {"name": "ip_address",       "type": "string",  "nullable": true, "description": "Hashed, not PII"},
+    {"name": "created_at",       "type": "timestamp","nullable": false},
+    {"name": "updated_at",       "type": "timestamp","nullable": false}
+  ],
+  "partitions": ["transaction_date"],
+  "primary_key": "transaction_id"
+}

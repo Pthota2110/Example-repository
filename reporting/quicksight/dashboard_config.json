@@ -1,0 +1,134 @@
+{
+  "DashboardId": "financial-platform-dashboard",
+  "Name": "Financial Data Platform — Executive Dashboard",
+  "Description": "Real-time financial KPIs: transaction volume, P&L, fraud rate, and category breakdown",
+  "DataSetReferences": [
+    {
+      "DataSetPlaceholder": "transactions_summary",
+      "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/transactions-summary-ds"
+    },
+    {
+      "DataSetPlaceholder": "daily_pnl",
+      "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/daily-pnl-ds"
+    },
+    {
+      "DataSetPlaceholder": "fraud_alerts",
+      "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/fraud-alerts-ds"
+    }
+  ],
+  "SourceEntity": {
+    "SourceTemplate": {
+      "DataSetReferences": [
+        {"DataSetPlaceholder": "transactions_summary", "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/transactions-summary-ds"},
+        {"DataSetPlaceholder": "daily_pnl", "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/daily-pnl-ds"},
+        {"DataSetPlaceholder": "fraud_alerts", "DataSetArn": "arn:aws:quicksight:us-east-1:${AccountId}:dataset/fraud-alerts-ds"}
+      ],
+      "Arn": "arn:aws:quicksight:us-east-1:${AccountId}:template/financial-platform-template"
+    }
+  },
+  "Sheets": [
+    {
+      "SheetId": "overview",
+      "Name": "Executive Overview",
+      "Visuals": [
+        {
+          "VisualId": "kpi-total-volume",
+          "Type": "KPIVisual",
+          "Title": "Total Transaction Volume (30d)",
+          "DataSetPlaceholder": "transactions_summary",
+          "Field": "total_volume_usd",
+          "ComparisonMethod": "PREVIOUS_PERIOD"
+        },
+        {
+          "VisualId": "kpi-fraud-rate",
+          "Type": "KPIVisual",
+          "Title": "Fraud Rate % (30d)",
+          "DataSetPlaceholder": "transactions_summary",
+          "Field": "fraud_rate_pct",
+          "TrendArrow": "INVERTED"
+        },
+        {
+          "VisualId": "kpi-transaction-count",
+          "Type": "KPIVisual",
+          "Title": "Total Transactions (30d)",
+          "DataSetPlaceholder": "transactions_summary",
+          "Field": "total_count"
+        },
+        {
+          "VisualId": "chart-daily-volume",
+          "Type": "LineChartVisual",
+          "Title": "Daily Transaction Volume (USD)",
+          "DataSetPlaceholder": "transactions_summary",
+          "XAxis": "transaction_date",
+          "YAxis": ["total_volume_usd", "rolling_7d_avg_volume"],
+          "Legend": ["Daily", "7-Day Rolling Avg"]
+        }
+      ]
+    },
+    {
+      "SheetId": "pnl",
+      "Name": "P&L Analysis",
+      "Visuals": [
+        {
+          "VisualId": "chart-net-flow",
+          "Type": "BarChartVisual",
+          "Title": "Net Cash Flow by Category",
+          "DataSetPlaceholder": "daily_pnl",
+          "XAxis": "category",
+          "YAxis": "net_flow_usd",
+          "ColorBy": "pnl_status"
+        },
+        {
+          "VisualId": "table-pnl-detail",
+          "Type": "TableVisual",
+          "Title": "Daily P&L Detail",
+          "DataSetPlaceholder": "daily_pnl",
+          "Columns": [
+            "transaction_date", "category", "total_credits",
+            "total_debits", "net_flow_usd", "rolling_7d_net_flow"
+          ]
+        }
+      ]
+    },
+    {
+      "SheetId": "fraud",
+      "Name": "Fraud & Risk",
+      "Visuals": [
+        {
+          "VisualId": "chart-fraud-trend",
+          "Type": "LineChartVisual",
+          "Title": "Fraud Rate Trend (90d)",
+          "DataSetPlaceholder": "transactions_summary",
+          "XAxis": "transaction_date",
+          "YAxis": ["fraud_rate_pct", "rolling_7d_fraud_rate"]
+        },
+        {
+          "VisualId": "pie-fraud-actions",
+          "Type": "PieChartVisual",
+          "Title": "Fraud Actions Breakdown",
+          "DataSetPlaceholder": "fraud_alerts",
+          "Dimension": "action",
+          "Measure": "count"
+        }
+      ]
+    }
+  ],
+  "Permissions": [
+    {
+      "Principal": "arn:aws:quicksight:us-east-1:${AccountId}:group/default/FinancialAnalysts",
+      "Actions": ["quicksight:DescribeDashboard", "quicksight:QueryDashboard"]
+    },
+    {
+      "Principal": "arn:aws:quicksight:us-east-1:${AccountId}:group/default/DataEngineers",
+      "Actions": [
+        "quicksight:DescribeDashboard", "quicksight:QueryDashboard",
+        "quicksight:UpdateDashboard", "quicksight:DeleteDashboard"
+      ]
+    }
+  ],
+  "Tags": [
+    {"Key": "Project", "Value": "financial-data-platform"},
+    {"Key": "Environment", "Value": "prod"},
+    {"Key": "Owner", "Value": "data-engineering"}
+  ]
+}

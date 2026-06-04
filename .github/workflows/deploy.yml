@@ -1,0 +1,196 @@
+name: CI / CD — Financial Data Platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  AWS_REGION: us-east-1
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install lint dependencies
+        run: pip install black flake8 isort mypy
+
+      - name: Check formatting (black)
+        run: black --check --diff .
+
+      - name: Check imports (isort)
+        run: isort --check-only --diff .
+
+      - name: Lint (flake8)
+        run: flake8 . --max-line-length=120 --extend-ignore=E203,W503
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v \
+            --cov=fraud_detection \
+            --cov=data_quality \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  data-quality-check:
+    name: Data Quality — Sample Data
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate sample data
+        run: python data/generate_sample_data.py --records 5000 --output /tmp/test_transactions.parquet
+
+      - name: Run data quality checks
+        run: |
+          python data_quality/validators.py \
+            --input /tmp/test_transactions.parquet \
+            --config data_quality/great_expectations/expectations.json \
+            --dataset transactions \
+            --no-metrics
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.6"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: |
+          terraform plan \
+            -var="environment=dev" \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -out=tfplan \
+            -no-color 2>&1 | tee plan_output.txt
+
+      - name: Comment plan on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('terraform/plan_output.txt', 'utf8');
+            const maxLen = 65000;
+            const body = `## Terraform Plan\n\`\`\`\n${plan.slice(0, maxLen)}\n\`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: [test, data-quality-check]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.6"
+
+      - name: Terraform Apply (dev)
+        working-directory: terraform
+        run: |
+          terraform init
+          terraform apply \
+            -var="environment=dev" \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -auto-approve
+
+      - name: Upload Glue scripts to S3
+        run: |
+          GOLD_BUCKET=$(cd terraform && terraform output -raw gold_bucket)
+          aws s3 sync etl/glue_jobs/ s3://${GOLD_BUCKET}/scripts/ --delete
+
+      - name: Update Lambda function code
+        run: |
+          cd fraud_detection
+          zip -r ../fraud_detection.zip .
+          cd ..
+          LAMBDA_NAME=$(cd terraform && terraform output -raw glue_ingest_job | sed 's/ingest/fraud-detection/')
+          aws lambda update-function-code \
+            --function-name financial-platform-dev-fraud-detection \
+            --zip-file fileb://fraud_detection.zip

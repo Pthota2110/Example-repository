@@ -1,0 +1,123 @@
+{
+  "expectation_suite_name": "financial_transactions_suite",
+  "data_asset_type": "Dataset",
+  "expectations": [
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {"min_value": 1, "max_value": 50000000},
+      "meta": {"notes": "Guard against empty loads or runaway duplicates"}
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {"column": "transaction_id"}
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {"column": "account_id"}
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {"column": "amount_usd"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {"column": "transaction_id"},
+      "meta": {"criticality": "high"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {"column": "account_id"},
+      "meta": {"criticality": "high"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {"column": "transaction_date"},
+      "meta": {"criticality": "high"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {"column": "amount"},
+      "meta": {"criticality": "high"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {"column": "transaction_id"},
+      "meta": {"notes": "transaction_id must be globally unique (UUID v4)"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "transaction_type",
+        "value_set": ["DEBIT", "CREDIT", "TRANSFER", "REFUND"]
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "status",
+        "value_set": ["PENDING", "SETTLED", "FLAGGED", "REVERSED", "FAILED"]
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "currency",
+        "regex": "^[A-Z]{3}$"
+      },
+      "meta": {"notes": "ISO 4217 currency codes"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "amount_usd",
+        "min_value": 0.01,
+        "max_value": 10000000,
+        "mostly": 0.9999
+      },
+      "meta": {"notes": "0.01% tolerance for legitimate edge cases"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {"column": "amount_usd", "mostly": 0.99},
+      "meta": {"notes": "99% threshold — some currencies may lack exchange rate"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "transaction_date",
+        "regex": "^\\d{4}-\\d{2}-\\d{2}$"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "transaction_hour",
+        "min_value": 0,
+        "max_value": 23
+      }
+    },
+    {
+      "expectation_type": "expect_column_proportion_of_unique_values_to_be_between",
+      "kwargs": {
+        "column": "account_id",
+        "min_value": 0.001,
+        "max_value": 1.0
+      },
+      "meta": {"notes": "At least 0.1% unique accounts — guards against fan-out bugs"}
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "account_id",
+        "regex": "^[a-f0-9]{64}$",
+        "mostly": 0.999
+      },
+      "meta": {"notes": "SHA-256 hash — 64 hex characters"}
+    }
+  ],
+  "meta": {
+    "great_expectations_version": "0.18.x",
+    "created_by": "data-engineering",
+    "last_updated": "2026-06-04"
+  }
+}
