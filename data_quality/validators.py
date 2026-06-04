@@ -12,6 +12,7 @@ from typing import Any
 
 import boto3
 import great_expectations as ge
+from great_expectations.core.batch import RuntimeBatchRequest
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class DataQualityValidator:
         self._expectations = self._load_expectations(expectations_path)
         self._cloudwatch = boto3.client("cloudwatch", region_name=cloudwatch_region) if emit_metrics else None
         self._emit_metrics = emit_metrics
+        self._context = ge.get_context()
 
     @staticmethod
     def _load_expectations(path: str) -> dict:
@@ -37,7 +39,9 @@ class DataQualityValidator:
             return json.load(f)
 
     def validate(self, df: pd.DataFrame, dataset_name: str, run_date: str | None = None) -> dict[str, Any]:
-        gdf = ge.from_pandas(df)
+        # Create a validator from pandas DataFrame using the current API
+        validator = self._context.sources.pandas_default.read_dataframe(df)
+        
         results = {
             "dataset": dataset_name,
             "run_date": run_date or datetime.now(timezone.utc).date().isoformat(),
@@ -51,13 +55,14 @@ class DataQualityValidator:
             kwargs = expectation.get("kwargs", {})
 
             try:
-                result = getattr(gdf, exp_type)(**kwargs)
-                success = result["success"]
+                # Call the expectation method on the validator
+                result = getattr(validator, exp_type)(**kwargs)
+                success = result.success
                 check = {
                     "expectation": exp_type,
                     "column": kwargs.get("column"),
                     "success": success,
-                    "result": result.get("result", {}),
+                    "result": result.result if hasattr(result, 'result') else {},
                 }
                 results["checks"].append(check)
                 if success:
