@@ -3,7 +3,7 @@
 import json
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -80,7 +80,9 @@ class TestDataQualityValidator:
         mock_validator = MagicMock()
         mock_context_instance = MagicMock()
         mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        mock_context_instance.sources.pandas_default.read_dataframe.return_value = (
+            mock_validator
+        )
 
         # Mock expectation results
         mock_result1 = MagicMock()
@@ -99,20 +101,20 @@ class TestDataQualityValidator:
 
     @patch("boto3.client")
     @patch("great_expectations.get_context")
-    def test_invalid_data_some_fail(self, mock_context, mock_boto, expectations_file, invalid_df):
+    def test_invalid_data_some_fail(
+        self, mock_context, mock_boto, expectations_file, invalid_df
+    ):
         from data_quality.validators import DataQualityValidator
 
         # Mock the Great Expectations context and validator
         mock_validator = MagicMock()
         mock_context_instance = MagicMock()
         mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        mock_context_instance.sources.pandas_default.read_dataframe.return_value = (
+            mock_validator
+        )
 
         # Mock mixed results
-        mock_pass = MagicMock()
-        mock_pass.success = True
-        mock_pass.result = {}
-
         mock_fail = MagicMock()
         mock_fail.success = False
         mock_fail.result = {}
@@ -136,7 +138,9 @@ class TestDataQualityValidator:
         mock_validator = MagicMock()
         mock_context_instance = MagicMock()
         mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        mock_context_instance.sources.pandas_default.read_dataframe.return_value = (
+            mock_validator
+        )
 
         mock_result = MagicMock()
         mock_result.success = True
@@ -156,14 +160,18 @@ class TestDataQualityValidator:
 
     @patch("boto3.client")
     @patch("great_expectations.get_context")
-    def test_pass_rate_calculation(self, mock_context, mock_boto, expectations_file, valid_df):
+    def test_pass_rate_calculation(
+        self, mock_context, mock_boto, expectations_file, valid_df
+    ):
         from data_quality.validators import DataQualityValidator
 
         # Mock the Great Expectations context and validator
         mock_validator = MagicMock()
         mock_context_instance = MagicMock()
         mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        mock_context_instance.sources.pandas_default.read_dataframe.return_value = (
+            mock_validator
+        )
 
         mock_result = MagicMock()
         mock_result.success = True
@@ -178,11 +186,15 @@ class TestDataQualityValidator:
         result = v.validate(valid_df, "test_dataset")
         total = result["summary"]["total"]
         passed = result["summary"]["passed"]
-        assert result["summary"]["pass_rate"] == pytest.approx(passed / total * 100, rel=1e-4)
+        assert result["summary"]["pass_rate"] == pytest.approx(
+            passed / total * 100, rel=1e-4
+        )
 
     @patch("boto3.client")
     @patch("great_expectations.get_context")
-    def test_missing_column_counted_as_failure(self, mock_context, mock_boto, expectations_file):
+    def test_missing_column_counted_as_failure(
+        self, mock_context, mock_boto, expectations_file
+    ):
         from data_quality.validators import DataQualityValidator
 
         df = pd.DataFrame([{"transaction_id": "t1"}])  # missing 'status' and 'amount'
@@ -191,7 +203,9 @@ class TestDataQualityValidator:
         mock_validator = MagicMock()
         mock_context_instance = MagicMock()
         mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        mock_context_instance.sources.pandas_default.read_dataframe.return_value = (
+            mock_validator
+        )
 
         mock_fail = MagicMock()
         mock_fail.success = False
