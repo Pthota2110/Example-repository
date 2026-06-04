@@ -93,9 +93,7 @@ class TestDataQualityValidator:
         result = v.validate(valid_df, "test_dataset")
         total = result["summary"]["total"]
         passed = result["summary"]["passed"]
-        assert result["summary"]["pass_rate"] == pytest.approx(
-            passed / total * 100, rel=1e-4
-        )
+        assert result["summary"]["pass_rate"] == pytest.approx(passed / total * 100, rel=1e-4)
 
     def test_missing_column_counted_as_failure(self, expectations_file):
         from data_quality.validators import DataQualityValidator

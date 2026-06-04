@@ -24,7 +24,7 @@ jobs:
           cache: pip
 
       - name: Install lint dependencies
-        run: pip install black flake8 isort mypy
+        run: pip install -r requirements.txt
 
       - name: Check formatting (black)
         run: black --check --diff .
@@ -92,6 +92,8 @@ jobs:
             --config data_quality/great_expectations/expectations.json \
             --dataset transactions \
             --no-metrics
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
   terraform-plan:
     name: Terraform Plan
