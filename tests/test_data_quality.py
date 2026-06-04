@@ -1,9 +1,8 @@
-"""Unit tests for the DataQualityValidator (no CloudWatch required)."""
+"""Unit tests for the DataQualityValidator (no AWS credentials required)."""
 
 import json
 import os
 import sys
-from unittest.mock import patch, MagicMock
 
 import pandas as pd
 import pytest
@@ -20,10 +19,7 @@ MINIMAL_EXPECTATIONS = {
         },
         {
             "expectation_type": "expect_column_values_to_be_in_set",
-            "kwargs": {
-                "column": "status",
-                "value_set": ["PENDING", "SETTLED", "FLAGGED"],
-            },
+            "kwargs": {"column": "status", "value_set": ["PENDING", "SETTLED", "FLAGGED"]},
         },
         {
             "expectation_type": "expect_column_values_to_be_between",
@@ -61,147 +57,48 @@ def invalid_df():
         [
             {"transaction_id": None, "status": "SETTLED", "amount": 100.0},
             {"transaction_id": "t2", "status": "UNKNOWN", "amount": 50.0},
-            {
-                "transaction_id": "t2",
-                "status": "SETTLED",
-                "amount": -5.0,
-            },  # duplicate + negative
+            {"transaction_id": "t2", "status": "SETTLED", "amount": -5.0},  # duplicate + negative
         ]
     )
 
 
 class TestDataQualityValidator:
-    @patch("boto3.client")
-    @patch("great_expectations.get_context")
-    def test_valid_data_all_pass(self, mock_context, mock_boto, expectations_file, valid_df):
+    def _make_validator(self, expectations_file):
         from data_quality.validators import DataQualityValidator
 
-        # Mock the Great Expectations context and validator
-        mock_validator = MagicMock()
-        mock_context_instance = MagicMock()
-        mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
+        return DataQualityValidator(expectations_file, emit_metrics=False)
 
-        # Mock expectation results
-        mock_result1 = MagicMock()
-        mock_result1.success = True
-        mock_result1.result = {}
-
-        mock_validator.expect_column_values_to_not_be_null.return_value = mock_result1
-        mock_validator.expect_column_values_to_be_in_set.return_value = mock_result1
-        mock_validator.expect_column_values_to_be_between.return_value = mock_result1
-        mock_validator.expect_column_values_to_be_unique.return_value = mock_result1
-
-        v = DataQualityValidator(expectations_file, emit_metrics=False)
+    def test_valid_data_all_pass(self, expectations_file, valid_df):
+        v = self._make_validator(expectations_file)
         result = v.validate(valid_df, "test_dataset")
         assert result["overall_success"] is True
         assert result["summary"]["failed"] == 0
 
-    @patch("boto3.client")
-    @patch("great_expectations.get_context")
-    def test_invalid_data_some_fail(self, mock_context, mock_boto, expectations_file, invalid_df):
-        from data_quality.validators import DataQualityValidator
-
-        # Mock the Great Expectations context and validator
-        mock_validator = MagicMock()
-        mock_context_instance = MagicMock()
-        mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
-
-        # Mock mixed results
-        mock_pass = MagicMock()
-        mock_pass.success = True
-        mock_pass.result = {}
-
-        mock_fail = MagicMock()
-        mock_fail.success = False
-        mock_fail.result = {}
-
-        mock_validator.expect_column_values_to_not_be_null.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_in_set.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_between.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_unique.return_value = mock_fail
-
-        v = DataQualityValidator(expectations_file, emit_metrics=False)
+    def test_invalid_data_some_fail(self, expectations_file, invalid_df):
+        v = self._make_validator(expectations_file)
         result = v.validate(invalid_df, "test_dataset")
         assert result["overall_success"] is False
         assert result["summary"]["failed"] > 0
 
-    @patch("boto3.client")
-    @patch("great_expectations.get_context")
-    def test_result_structure(self, mock_context, mock_boto, expectations_file, valid_df):
-        from data_quality.validators import DataQualityValidator
-
-        # Mock the Great Expectations context and validator
-        mock_validator = MagicMock()
-        mock_context_instance = MagicMock()
-        mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
-
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_result.result = {}
-
-        mock_validator.expect_column_values_to_not_be_null.return_value = mock_result
-        mock_validator.expect_column_values_to_be_in_set.return_value = mock_result
-        mock_validator.expect_column_values_to_be_between.return_value = mock_result
-        mock_validator.expect_column_values_to_be_unique.return_value = mock_result
-
-        v = DataQualityValidator(expectations_file, emit_metrics=False)
+    def test_result_structure(self, expectations_file, valid_df):
+        v = self._make_validator(expectations_file)
         result = v.validate(valid_df, "test_dataset")
         assert "dataset" in result
         assert "summary" in result
         assert "checks" in result
         assert "pass_rate" in result["summary"]
 
-    @patch("boto3.client")
-    @patch("great_expectations.get_context")
-    def test_pass_rate_calculation(self, mock_context, mock_boto, expectations_file, valid_df):
-        from data_quality.validators import DataQualityValidator
-
-        # Mock the Great Expectations context and validator
-        mock_validator = MagicMock()
-        mock_context_instance = MagicMock()
-        mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
-
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_result.result = {}
-
-        mock_validator.expect_column_values_to_not_be_null.return_value = mock_result
-        mock_validator.expect_column_values_to_be_in_set.return_value = mock_result
-        mock_validator.expect_column_values_to_be_between.return_value = mock_result
-        mock_validator.expect_column_values_to_be_unique.return_value = mock_result
-
-        v = DataQualityValidator(expectations_file, emit_metrics=False)
+    def test_pass_rate_calculation(self, expectations_file, valid_df):
+        v = self._make_validator(expectations_file)
         result = v.validate(valid_df, "test_dataset")
         total = result["summary"]["total"]
         passed = result["summary"]["passed"]
         assert result["summary"]["pass_rate"] == pytest.approx(passed / total * 100, rel=1e-4)
 
-    @patch("boto3.client")
-    @patch("great_expectations.get_context")
-    def test_missing_column_counted_as_failure(self, mock_context, mock_boto, expectations_file):
+    def test_missing_column_counted_as_failure(self, expectations_file):
         from data_quality.validators import DataQualityValidator
 
         df = pd.DataFrame([{"transaction_id": "t1"}])  # missing 'status' and 'amount'
-
-        # Mock the Great Expectations context and validator
-        mock_validator = MagicMock()
-        mock_context_instance = MagicMock()
-        mock_context.return_value = mock_context_instance
-        mock_context_instance.sources.pandas_default.read_dataframe.return_value = mock_validator
-
-        mock_fail = MagicMock()
-        mock_fail.success = False
-        mock_fail.result = {}
-
-        mock_validator.expect_column_values_to_not_be_null.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_in_set.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_between.return_value = mock_fail
-        mock_validator.expect_column_values_to_be_unique.return_value = mock_fail
-
         v = DataQualityValidator(expectations_file, emit_metrics=False)
         result = v.validate(df, "test_dataset")
         assert result["summary"]["failed"] > 0
